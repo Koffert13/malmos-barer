@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Malmös barer – karta</title>
+<meta name="description" content="Karta över barer i Malmö med betyg från Instagramkontot @malmosbarer.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#11140F; --ink-2:#1B211A; --ink-3:#252C23;
+  --paper:#E2DAC6; --brass:#C89B3C;
+  --line:rgba(226,218,198,.16);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--ink);color:var(--paper);
+  font-family:"Work Sans",system-ui,sans-serif;
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+header{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  padding:calc(env(safe-area-inset-top) + 12px) 14px 14px;
+  background:linear-gradient(to bottom,var(--ink) 52%,rgba(17,20,15,0));
+  pointer-events:none;
+}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h1{
+  font-family:Fraunces,Georgia,serif;font-weight:900;
+  font-size:clamp(21px,6vw,30px);line-height:.95;margin:0;letter-spacing:-.02em;
+}
+.handle{
+  font-family:"Space Mono",monospace;font-size:11px;
+  color:var(--brass);letter-spacing:.06em;
+  text-decoration:none;pointer-events:auto;
+}
+.handle:hover{text-decoration:underline}
+.chips{display:flex;gap:6px;margin-top:11px;pointer-events:auto;flex-wrap:wrap}
+.chip{
+  font-family:"Space Mono",monospace;font-size:12px;font-weight:700;
+  padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(27,33,26,.85);backdrop-filter:blur(8px);
+  color:rgba(226,218,198,.45);transition:.15s;
+}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--c);border-color:var(--c)}
+.chip.util{color:rgba(226,218,198,.75);margin-left:auto}
+.chip.util:hover{color:var(--paper);border-color:var(--brass)}
+
+#map{position:absolute;inset:0;background:var(--ink)}
+.leaflet-container{background:var(--ink);font-family:"Work Sans",sans-serif}
+.leaflet-control-attribution{
+  background:rgba(17,20,15,.8)!important;color:rgba(226,218,198,.4)!important;font-size:9px!important;
+}
+.leaflet-control-attribution a{color:rgba(226,218,198,.6)!important}
+.leaflet-control-zoom{display:none}
+.tiles-inverted{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(1.12) saturate(.75)}
+
+#tileWarn{
+  position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);
+  z-index:1100;max-width:460px;margin:0 auto;
+  background:var(--ink-2);border:1px solid #C0703A;border-radius:11px;
+  padding:13px 15px;font-size:13px;line-height:1.5;
+  color:rgba(226,218,198,.82);display:none;
+}
+#tileWarn.show{display:block}
+#tileWarn b{display:block;font-family:"Space Mono",monospace;font-size:12px;
+  letter-spacing:.04em;color:#C0703A;margin-bottom:5px}
+
+.pin-wrap{background:none;border:none}
+.pin{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--c);color:var(--ink);display:grid;place-items:center;
+  font-family:Fraunces,serif;font-weight:900;font-size:16px;
+  box-shadow:0 0 0 2px var(--ink),0 3px 10px rgba(0,0,0,.6);
+  transition:transform .18s cubic-bezier(.34,1.6,.5,1);
+}
+.pin:hover{transform:scale(1.22)}
+
+#sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:1200;
+  padding:0 12px calc(env(safe-area-inset-bottom) + 12px);
+  transform:translateY(115%);transition:transform .32s cubic-bezier(.22,1,.36,1);
+  pointer-events:none;
+}
+#sheet.open{transform:translateY(0);pointer-events:auto}
+.coaster{
+  max-width:460px;margin:0 auto;position:relative;
+  background:var(--paper);color:var(--ink);
+  border-radius:14px;padding:6px;box-shadow:0 -6px 40px rgba(0,0,0,.65);
+}
+.coaster-inner{
+  border:1px solid rgba(17,20,15,.22);border-radius:9px;
+  padding:16px 16px 14px;display:flex;gap:14px;align-items:flex-start;
+}
+.stamp{
+  flex:0 0 auto;width:64px;height:64px;border-radius:50%;
+  border:2px solid var(--c);color:var(--c);
+  display:grid;place-items:center;transform:rotate(-4deg);
+}
+.stamp b{font-family:Fraunces,serif;font-weight:900;font-size:28px;line-height:1}
+.stamp i{font-family:"Space Mono",monospace;font-style:normal;font-size:9px;
+  letter-spacing:.08em;margin-top:-2px}
+.c-body{min-width:0;flex:1}
+.c-body h2{font-family:Fraunces,serif;font-weight:900;font-size:21px;
+  margin:0 0 3px;line-height:1.06;letter-spacing:-.01em}
+.addr{font-size:13px;color:rgba(17,20,15,.62);margin:0 0 11px;line-height:1.35}
+.c-actions{display:flex;gap:8px;flex-wrap:wrap}
+.c-actions a{
+  font-family:"Space Mono",monospace;font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-decoration:none;padding:7px 12px;
+  border-radius:999px;border:1px solid rgba(17,20,15,.28);color:var(--ink);
+}
+.c-actions a:hover{background:var(--ink);color:var(--paper)}
+.close{
+  position:absolute;top:-11px;right:-2px;width:30px;height:30px;border-radius:50%;
+  background:var(--ink-3);color:var(--paper);display:grid;place-items:center;
+  font-size:17px;line-height:1;border:1px solid var(--line);
+}
+
+#panel{
+  position:fixed;inset:0;z-index:1400;background:var(--ink);
+  padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px);
+  overflow-y:auto;display:none;
+}
+#panel.open{display:block}
+.p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.p-head h2{font-family:Fraunces,serif;font-weight:900;font-size:24px;margin:0}
+.p-close{font-size:24px;line-height:1;padding:4px 8px}
+.p-note{font-size:13px;color:rgba(226,218,198,.45);line-height:1.5;margin:0 0 20px}
+.p-note a{color:var(--brass)}
+.row{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:13px 2px;border-bottom:1px solid var(--line);
+}
+.row:hover .nm{color:var(--brass)}
+.row .num{font-family:Fraunces,serif;font-weight:900;font-size:19px;
+  width:30px;flex:0 0 auto;color:var(--c)}
+.nm{font-weight:600;font-size:15px;line-height:1.2;transition:color .15s}
+.ad{font-size:12px;color:rgba(226,218,198,.42);margin-top:2px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="map" role="application" aria-label="Karta över recenserade barer i Malmö"></div>
+
+<div id="tileWarn" role="status">
+  <b>Kartrutorna blockeras här.</b>
+  Nålarna fungerar, men bakgrundskartan hämtas från en extern server som den här
+  vyn inte släpper igenom. Öppna filen direkt i webbläsaren så laddas kartan.
+</div>
+
+<header>
+  <div class="brand">
+    <h1>Malmös barer</h1>
+    <a class="handle" href="https://www.instagram.com/malmosbarer" target="_blank" rel="noopener">@malmosbarer</a>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip" data-g="5" aria-pressed="true">5</button>
+    <button class="chip" data-g="4" aria-pressed="true">4</button>
+    <button class="chip" data-g="3" aria-pressed="true">3</button>
+    <button class="chip" data-g="2" aria-pressed="true">2</button>
+    <button class="chip" data-g="1" aria-pressed="true">1</button>
+    <button class="chip util" id="openPanel">Alla barer</button>
+  </div>
+</header>
+
+<div id="sheet" aria-live="polite">
+  <div class="coaster">
+    <button class="close" id="closeSheet" aria-label="Stäng">×</button>
+    <div class="coaster-inner">
+      <div class="stamp"><div style="text-align:center"><b id="sGrade">–</b><br><i>AV 5</i></div></div>
+      <div class="c-body">
+        <h2 id="sName">–</h2>
+        <p class="addr" id="sAddr"></p>
+        <div class="c-actions">
+          <a id="sDir" href="#" target="_blank" rel="noopener">Vägbeskrivning</a>
+          <a href="https://www.instagram.com/malmosbarer" target="_blank" rel="noopener">Recensionen</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="panel" role="dialog" aria-label="Alla barer">
+  <div class="p-head">
+    <h2 id="pTitle">Alla barer</h2>
+    <button class="p-close" id="closePanel" aria-label="Stäng">×</button>
+  </div>
+  <p class="p-note">Sorterade på betyg. Alla omdömen kommer från
+    <a href="https://www.instagram.com/malmosbarer" target="_blank" rel="noopener">@malmosbarer</a>.</p>
+  <div id="viewList"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================
+   BARERNA — lägg till nya rader här, en per bar.
+   Betyg 1–5. Senaste omdömet gäller om en bar recenserats flera gånger.
+   ============================================================ */
+const BARS = [
+  {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171},
+  {name:'Gamle Nobes Bodega', grade:4, addr:'Kristianstadsgatan 36', lat:55.5912370, lng:13.0167607},
+  {name:'Rex',                grade:3, addr:'Nobelvägen 107',       lat:55.5936599, lng:13.0208990},
+  {name:'Family Pub',         grade:3, addr:'Nobelvägen 52',        lat:55.5936210, lng:13.0203022},
+  {name:'Asia Village',       grade:2, addr:'Ystadsgatan 39',       lat:55.5893317, lng:13.0169568}
+];
+
+const COLORS = {1:'#9B4A3A',2:'#C0703A',3:'#D3A441',4:'#8FA24E',5:'#4FA37F'};
+let active = new Set([1,2,3,4,5]);
+let markers = [];
+
+const map = L.map('map',{zoomControl:false,attributionControl:true})
+  .setView([55.5915,13.0175],15);
+
+/* Kartrutor: prova källorna i tur och ordning tills en svarar. */
+const SOURCES = [
+  {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+   sub:'abcd', attr:'&copy; OpenStreetMap &copy; CARTO', dark:true},
+  {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+   sub:'abc',  attr:'&copy; OpenStreetMap', dark:false},
+  {url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+   sub:'abc',  attr:'&copy; OpenStreetMap France', dark:false}
+];
+let layer = null, srcIndex = -1;
+
+function tryNextSource(){
+  if(layer){ map.removeLayer(layer); layer = null; }
+  srcIndex++;
+  if(srcIndex >= SOURCES.length){ document.getElementById('tileWarn').classList.add('show'); return; }
+  const s = SOURCES[srcIndex];
+  let ok = false, errors = 0;
+  layer = L.tileLayer(s.url,{
+    attribution:s.attr, subdomains:s.sub, maxZoom:19,
+    className: s.dark ? '' : 'tiles-inverted'
+  });
+  layer.on('tileload', ()=>{ ok = true; document.getElementById('tileWarn').classList.remove('show'); });
+  layer.on('tileerror', ()=>{ if(++errors >= 3 && !ok) tryNextSource(); });
+  layer.addTo(map);
+  setTimeout(()=>{ if(!ok) tryNextSource(); }, 5000);
+}
+tryNextSource();
+
+function esc(s){ return String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+function render(){
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  BARS.forEach((b,i) => {
+    if(!active.has(b.grade)) return;
+    const icon = L.divIcon({
+      className:'pin-wrap',
+      html:'<div class="pin" style="--c:'+COLORS[b.grade]+'">'+b.grade+'</div>',
+      iconSize:[34,34], iconAnchor:[17,17]
+    });
+    markers.push(L.marker([b.lat,b.lng],{icon,keyboard:true,title:b.name})
+      .addTo(map).on('click',()=>openSheet(i)));
+  });
+}
+
+function renderList(){
+  const sorted = [...BARS].sort((a,b)=> b.grade-a.grade || a.name.localeCompare(b.name,'sv'));
+  document.getElementById('viewList').innerHTML = sorted.map(b =>
+    '<button class="row" data-go="'+BARS.indexOf(b)+'">'
+    + '<span class="num" style="--c:'+COLORS[b.grade]+'">'+b.grade+'</span>'
+    + '<span><span class="nm">'+esc(b.name)+'</span><br>'
+    + '<span class="ad">'+esc(b.addr||'')+'</span></span></button>').join('');
+  document.querySelectorAll('[data-go]').forEach(btn => btn.onclick = ()=>{
+    const i = +btn.dataset.go;
+    closePanel();
+    map.flyTo([BARS[i].lat,BARS[i].lng],17,{duration:.7});
+    setTimeout(()=>openSheet(i),450);
+  });
+  document.getElementById('pTitle').textContent = BARS.length + ' barer';
+}
+
+function openSheet(i){
+  const b = BARS[i];
+  document.querySelector('.stamp').style.setProperty('--c',COLORS[b.grade]);
+  document.getElementById('sGrade').textContent = b.grade;
+  document.getElementById('sName').textContent = b.name;
+  document.getElementById('sAddr').textContent = (b.addr ? b.addr+' · ' : '')+'Malmö';
+  document.getElementById('sDir').href =
+    'https://www.google.com/maps/dir/?api=1&destination='+b.lat+','+b.lng;
+  document.getElementById('sheet').classList.add('open');
+}
+document.getElementById('closeSheet').onclick = ()=>
+  document.getElementById('sheet').classList.remove('open');
+map.on('click',()=>document.getElementById('sheet').classList.remove('open'));
+
+document.getElementById('chips').querySelectorAll('.chip[data-g]').forEach(ch=>{
+  const g = +ch.dataset.g;
+  ch.style.setProperty('--c',COLORS[g]);
+  ch.onclick = ()=>{
+    const on = ch.getAttribute('aria-pressed') === 'true';
+    ch.setAttribute('aria-pressed', String(!on));
+    on ? active.delete(g) : active.add(g);
+    render();
+  };
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('openPanel').onclick = ()=>{ panel.classList.add('open'); renderList(); };
+document.getElementById('closePanel').onclick = closePanel;
+function closePanel(){ panel.classList.remove('open'); }
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape'){ closePanel(); document.getElementById('sheet').classList.remove('open'); }
+});
+
+render();
+renderList();
+</script>
+</body>
+</html>
