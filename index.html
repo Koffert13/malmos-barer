@@ -96,6 +96,26 @@ h1{
   background:var(--paper);color:var(--ink);
   border-radius:14px;padding:6px;box-shadow:0 -6px 40px rgba(0,0,0,.65);
 }
+.c-media{
+  position:relative;width:100%;aspect-ratio:16/10;
+  border-radius:9px;overflow:hidden;margin-bottom:6px;
+  background:var(--ink-3);
+}
+.c-media img{width:100%;height:100%;object-fit:cover;display:block}
+.c-media .ph{
+  position:absolute;inset:0;display:grid;place-items:center;gap:4px;
+  align-content:center;text-align:center;
+  background:radial-gradient(120% 120% at 50% 0%,var(--c) -40%,var(--ink-3) 72%);
+}
+.c-media .ph b{
+  font-family:Fraunces,serif;font-weight:900;font-size:30px;line-height:1;
+  color:var(--paper);letter-spacing:.02em;
+}
+.c-media .ph i{
+  font-family:"Space Mono",monospace;font-style:normal;font-size:10px;
+  letter-spacing:.08em;color:rgba(226,218,198,.5);
+}
+.c-media [hidden]{display:none}   /* måste stå sist för att slå reglerna ovan */
 .coaster-inner{
   border:1px solid rgba(17,20,15,.22);border-radius:9px;
   padding:16px 16px 14px;display:flex;gap:14px;align-items:flex-start;
@@ -177,6 +197,10 @@ h1{
 <div id="sheet" aria-live="polite">
   <div class="coaster">
     <button class="close" id="closeSheet" aria-label="Stäng">×</button>
+    <div class="c-media" id="sMedia">
+      <img id="sImg" alt="" hidden>
+      <div class="ph" id="sPh"><b>–</b><i>FOTO SAKNAS</i></div>
+    </div>
     <div class="coaster-inner">
       <div class="stamp"><div style="text-align:center"><b id="sGrade">–</b><br><i>AV 5</i></div></div>
       <div class="c-body">
@@ -206,13 +230,18 @@ h1{
 /* ============================================================
    BARERNA — lägg till nya rader här, en per bar.
    Betyg 1–5. Senaste omdömet gäller om en bar recenserats flera gånger.
+
+   img: sökväg eller adress till ett foto på baren, t.ex.
+        img:'bilder/bar-kiosko.jpg'  (fil bredvid index.html)
+        img:'https://exempel.se/foto.jpg'
+   Lämna tomt så visas en platshållare i stället.
    ============================================================ */
 const BARS = [
-  {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171},
-  {name:'Gamle Nobes Bodega', grade:4, addr:'Kristianstadsgatan 36', lat:55.5912370, lng:13.0167607},
-  {name:'Rex',                grade:3, addr:'Nobelvägen 107',       lat:55.5936599, lng:13.0208990},
-  {name:'Family Pub',         grade:3, addr:'Nobelvägen 52',        lat:55.5936210, lng:13.0203022},
-  {name:'Asia Village',       grade:2, addr:'Ystadsgatan 39',       lat:55.5893317, lng:13.0169568}
+  {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171, img:''},
+  {name:'Gamle Nobes Bodega', grade:4, addr:'Kristianstadsgatan 36', lat:55.5912370, lng:13.0167607, img:''},
+  {name:'Rex',                grade:3, addr:'Nobelvägen 107',       lat:55.5936599, lng:13.0208990, img:''},
+  {name:'Family Pub',         grade:3, addr:'Nobelvägen 52',        lat:55.5936210, lng:13.0203022, img:''},
+  {name:'Asia Village',       grade:2, addr:'Ystadsgatan 39',       lat:55.5893317, lng:13.0169568, img:''}
 ];
 
 const COLORS = {1:'#9B4A3A',2:'#C0703A',3:'#D3A441',4:'#8FA24E',5:'#4FA37F'};
@@ -283,8 +312,37 @@ function renderList(){
   document.getElementById('pTitle').textContent = BARS.length + ' barer';
 }
 
+/* Initialer till platshållaren, t.ex. "Gamle Nobes Bodega" -> "GN" */
+function initials(name){
+  return String(name).trim().split(/\s+/).slice(0,2)
+    .map(w => w[0] ? w[0].toUpperCase() : '').join('') || '–';
+}
+
+/* Visar barens foto i kortet, med platshållare om bild saknas eller inte laddar. */
+function showPhoto(b){
+  const media = document.getElementById('sMedia');
+  const img = document.getElementById('sImg');
+  const ph = document.getElementById('sPh');
+  media.style.setProperty('--c',COLORS[b.grade]);
+  ph.querySelector('b').textContent = initials(b.name);
+
+  const fallback = ()=>{ img.hidden = true; img.removeAttribute('src'); ph.hidden = false; };
+  img.onerror = fallback;
+  img.onload = null;
+  img.alt = '';
+  fallback();                       /* nollställ så föregående bar inte hänger kvar */
+
+  if(b.img){
+    img.onload = ()=>{ img.hidden = false; ph.hidden = true; };
+    img.alt = 'Foto på ' + b.name;
+    img.src = b.img;
+    if(img.complete && img.naturalWidth) img.onload();
+  }
+}
+
 function openSheet(i){
   const b = BARS[i];
+  showPhoto(b);
   document.querySelector('.stamp').style.setProperty('--c',COLORS[b.grade]);
   document.getElementById('sGrade').textContent = b.grade;
   document.getElementById('sName').textContent = b.name;
