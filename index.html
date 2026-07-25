@@ -234,7 +234,7 @@ h1{
    img: sökväg eller adress till ett foto på baren, t.ex.
         img:'bilder/bar-kiosko.jpg'  (fil bredvid index.html)
         img:'https://exempel.se/foto.jpg'
-   Lämna tomt så visas en platshållare i stället.
+   Lämna tomt så används Street View (se nedan), annars en platshållare.
    ============================================================ */
 const BARS = [
   {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171, img:''},
@@ -243,6 +243,25 @@ const BARS = [
   {name:'Family Pub',         grade:3, addr:'Nobelvägen 52',        lat:55.5936210, lng:13.0203022, img:''},
   {name:'Asia Village',       grade:2, addr:'Ystadsgatan 39',       lat:55.5893317, lng:13.0169568, img:''}
 ];
+
+/* ------------------------------------------------------------
+   BILDER FRÅN GOOGLE STREET VIEW
+   Klistra in en nyckel från Google Maps Platform (aktivera
+   "Street View Static API") så hämtas ett foto på adressen
+   automatiskt för varje bar som saknar eget img-fält.
+   Lämnas nyckeln tom visas platshållaren i stället.
+   ------------------------------------------------------------ */
+const STREETVIEW_KEY = '';
+
+/* Bildadress för en bar: eget foto först, annars Street View. */
+function photoUrl(b){
+  if(b.img) return b.img;
+  if(!STREETVIEW_KEY) return '';
+  return 'https://maps.googleapis.com/maps/api/streetview'
+    + '?size=640x400&fov=80&location=' + b.lat + ',' + b.lng
+    + '&return_error_code=true'      /* saknas gatubild -> 404 -> platshållare */
+    + '&key=' + encodeURIComponent(STREETVIEW_KEY);
+}
 
 const COLORS = {1:'#9B4A3A',2:'#C0703A',3:'#D3A441',4:'#8FA24E',5:'#4FA37F'};
 let active = new Set([1,2,3,4,5]);
@@ -332,10 +351,11 @@ function showPhoto(b){
   img.alt = '';
   fallback();                       /* nollställ så föregående bar inte hänger kvar */
 
-  if(b.img){
+  const src = photoUrl(b);
+  if(src){
     img.onload = ()=>{ img.hidden = false; ph.hidden = true; };
     img.alt = 'Foto på ' + b.name;
-    img.src = b.img;
+    img.src = src;
     if(img.complete && img.naturalWidth) img.onload();
   }
 }
