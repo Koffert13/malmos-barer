@@ -231,10 +231,9 @@ h1{
    BARERNA — lägg till nya rader här, en per bar.
    Betyg 1–5. Senaste omdömet gäller om en bar recenserats flera gånger.
 
-   img: sökväg eller adress till ett foto på baren, t.ex.
-        img:'bilder/bar-kiosko.jpg'  (fil bredvid index.html)
-        img:'https://exempel.se/foto.jpg'
-   Lämna tomt så används Street View (se nedan), annars en platshållare.
+   img: behövs bara om bilden har ett avvikande filnamn eller ligger
+        på nätet, t.ex. img:'https://exempel.se/foto.jpg'. Annars
+        räcker det att lägga filen i mappen "bilder" (se längre ned).
    ============================================================ */
 const BARS = [
   {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171, img:''},
@@ -245,22 +244,32 @@ const BARS = [
 ];
 
 /* ------------------------------------------------------------
-   BILDER FRÅN GOOGLE STREET VIEW
-   Klistra in en nyckel från Google Maps Platform (aktivera
-   "Street View Static API") så hämtas ett foto på adressen
-   automatiskt för varje bar som saknar eget img-fält.
-   Lämnas nyckeln tom visas platshållaren i stället.
-   ------------------------------------------------------------ */
-const STREETVIEW_KEY = '';
+   BILDER
+   Spara fotona i mappen "bilder" bredvid index.html och döp dem
+   efter baren – då hittas de av sig själva, utan kodändring:
 
-/* Bildadress för en bar: eget foto först, annars Street View. */
-function photoUrl(b){
-  if(b.img) return b.img;
-  if(!STREETVIEW_KEY) return '';
-  return 'https://maps.googleapis.com/maps/api/streetview'
-    + '?size=640x400&fov=80&location=' + b.lat + ',' + b.lng
-    + '&return_error_code=true'      /* saknas gatubild -> 404 -> platshållare */
-    + '&key=' + encodeURIComponent(STREETVIEW_KEY);
+     Bar Kiosko         -> bilder/bar-kiosko.jpg
+     Gamle Nobes Bodega -> bilder/gamle-nobes-bodega.jpg
+     Asia Village       -> bilder/asia-village.jpg
+
+   Ändelserna jpg, jpeg, png och webp fungerar alla. Vill du ha ett
+   annat filnamn eller en bild från nätet: sätt img på baren ovan.
+   ------------------------------------------------------------ */
+const IMG_DIR = 'bilder/';
+const IMG_EXT = ['jpg','jpeg','png','webp'];
+
+/* 'Gamle Nobes Bodega' -> 'gamle-nobes-bodega' */
+function slug(name){
+  return String(name).toLowerCase()
+    .replace(/[åä]/g,'a').replace(/ö/g,'o')
+    .replace(/[éè]/g,'e').replace(/ü/g,'u')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
+/* Bildadresser att prova i tur och ordning för en bar. */
+function photoCandidates(b){
+  if(b.img) return [b.img];
+  return IMG_EXT.map(e => IMG_DIR + slug(b.name) + '.' + e);
 }
 
 const COLORS = {1:'#9B4A3A',2:'#C0703A',3:'#D3A441',4:'#8FA24E',5:'#4FA37F'};
@@ -337,7 +346,9 @@ function initials(name){
     .map(w => w[0] ? w[0].toUpperCase() : '').join('') || '–';
 }
 
-/* Visar barens foto i kortet, med platshållare om bild saknas eller inte laddar. */
+/* Visar barens foto i kortet. Provar filändelserna i tur och ordning och
+   faller tillbaka på platshållaren om ingen bild finns. */
+let photoReq = 0;
 function showPhoto(b){
   const media = document.getElementById('sMedia');
   const img = document.getElementById('sImg');
@@ -345,19 +356,26 @@ function showPhoto(b){
   media.style.setProperty('--c',COLORS[b.grade]);
   ph.querySelector('b').textContent = initials(b.name);
 
-  const fallback = ()=>{ img.hidden = true; img.removeAttribute('src'); ph.hidden = false; };
-  img.onerror = fallback;
-  img.onload = null;
-  img.alt = '';
-  fallback();                       /* nollställ så föregående bar inte hänger kvar */
+  const req = ++photoReq;           /* så att en långsam bild från förra baren ignoreras */
+  const list = photoCandidates(b);
+  let n = 0;
 
-  const src = photoUrl(b);
-  if(src){
-    img.onload = ()=>{ img.hidden = false; ph.hidden = true; };
+  const showPh = ()=>{ img.onload = img.onerror = null;
+                       img.hidden = true; img.removeAttribute('src'); img.alt = '';
+                       ph.hidden = false; };
+  showPh();                         /* nollställ så föregående bar inte hänger kvar */
+
+  const tryNext = ()=>{
+    if(req !== photoReq) return;
+    if(n >= list.length){ showPh(); return; }
+    const src = list[n++];
+    img.onload = ()=>{ if(req !== photoReq) return; img.hidden = false; ph.hidden = true; };
+    img.onerror = tryNext;
     img.alt = 'Foto på ' + b.name;
     img.src = src;
     if(img.complete && img.naturalWidth) img.onload();
-  }
+  };
+  tryNext();
 }
 
 function openSheet(i){

@@ -1,0 +1,27 @@
+BILDER PÅ BARERNA
+=================
+
+Lägg fotona här i den här mappen. Filnamnet är barens namn i småbokstäver
+med bindestreck i stället för mellanslag – då plockas bilden upp av sig
+själv, utan att något behöver ändras i index.html.
+
+Filnamn för barerna som finns i kartan i dag:
+
+    bilder/bar-kiosko.jpg
+    bilder/gamle-nobes-bodega.jpg
+    bilder/rex.jpg
+    bilder/family-pub.jpg
+    bilder/asia-village.jpg
+
+Ändelserna jpg, jpeg, png och webp fungerar alla – .jpg provas först.
+Saknas filen visas en platshållare med barens initialer i stället, så
+det gör inget om bara någon enstaka bar har foto till att börja med.
+
+Bra att veta:
+ * Bilden visas beskuren i ett stående-liggande fönster (16:10), så
+   motivet bör ligga mitt i bilden.
+ * Håll filerna någorlunda små, gärna under 300 kB och max ca 1200 px
+   breda – annars blir kortet långsamt att öppna i mobilen.
+ * Heter filen något annat, eller ligger bilden på nätet, kan du sätta
+   img på barens rad i index.html i stället:
+       {name:'Rex', ..., img:'bilder/rex-uteservering.jpg'}
