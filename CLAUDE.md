@@ -39,7 +39,10 @@ Verification is manual. After a change, check in a browser that:
 
 - pins render at the right coordinates and in the rating colour,
 - the rating chips (5…1) still hide and show pins,
-- clicking a pin opens the card with photo/placeholder, name, address, rating,
+- clicking a pin zooms to `NEAR_ZOOM` and opens the card with photo/placeholder,
+  name, address, rating, with the pin visible above the card rather than behind
+  it,
+- clicking a pin when already zoomed in only pans, it does not re-zoom,
 - "Alla barer" opens the panel, and clicking a row flies the map there and
   opens the card,
 - Escape closes both the panel and the card.
@@ -142,6 +145,10 @@ bars — this was tried with bicycle emoji and reverted.
   fine.
 - Compact style matching what is already there: two-space indent, minimal
   blank lines, CSS declarations packed onto shared lines with `;` separators.
+- Both the map pins and the list rows navigate through `goTo(i)` — it owns the
+  zoom, the card-clearing offset from `centerFor()` and the timing of
+  `openSheet`. Route any new entry point through it instead of calling
+  `map.flyTo` and `openSheet` yourself.
 - `document.getElementById(...)` inline at the point of use is the established
   pattern. Do not refactor into a cached element registry or a state container.
 - Escape any user/data string that goes into `innerHTML` with the existing
