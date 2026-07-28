@@ -140,7 +140,8 @@ h1{
 }
 .c-actions a:hover{background:var(--ink);color:var(--paper)}
 .close{
-  position:absolute;top:-11px;right:-2px;width:30px;height:30px;border-radius:50%;
+  position:absolute;top:-11px;right:-2px;z-index:1;   /* annars målas bildytan över krysset */
+  width:30px;height:30px;border-radius:50%;
   background:var(--ink-3);color:var(--paper);display:grid;place-items:center;
   font-size:17px;line-height:1;border:1px solid var(--line);
 }
