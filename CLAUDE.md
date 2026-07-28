@@ -44,6 +44,13 @@ Verification is manual. After a change, check in a browser that:
   opens the card,
 - Escape closes both the panel and the card.
 
+In a sandbox without a browser you can still screenshot the page with headless
+Chromium, but only after vendoring Leaflet locally — the CDN `<script>` fails
+there, and without `L` the whole script dies and the page renders empty. Copy
+`index.html` to a scratch directory, `curl` the pinned Leaflet CSS/JS next to
+it, point the tags at the local copies, and append `openSheet(0)` or a
+`panel.classList.add('open')` to capture the card and list states.
+
 Note that the map tiles come from external CDNs. In a sandboxed or offline
 environment the tiles will not load and the orange `#tileWarn` box appears —
 that is expected there and not a bug to "fix". The pins and all interaction
@@ -73,8 +80,17 @@ const BARS = [
 
 - `grade` is an integer **1–5**. Every grade must have an entry in `COLORS`.
 - `lat`/`lng` are decimal degrees; bars are in Malmö, so roughly
-  `55.58–55.60` / `13.00–13.03`. Get real coordinates — do not estimate from a
-  street name if you can look the address up.
+  `55.58–55.60` / `13.00–13.03`. **Always geocode, never estimate** — coordinates
+  guessed from a street name have landed half a kilometre off. Look the bar up
+  by name in OpenStreetMap and use the venue node:
+
+  ```bash
+  curl -sS -A 'malmos-barer-map/1.0' \
+    'https://nominatim.openstreetmap.org/search?format=json&countrycodes=se&city=Malmö&street=Amiralsgatan%2047'
+  ```
+
+  Prefer the result whose `name` matches the bar over the bare house-number
+  node, and sanity-check that the new pin lands near the others.
 - `addr` is the street address only. The card appends `· Malmö` itself, so do
   not include the city.
 - `img` is a path next to `index.html` (`'bilder/bar-kiosko.jpg'`) or an
@@ -114,10 +130,10 @@ const COLORS = {1:'#9B4A3A',2:'#C0703A',3:'#D3A441',4:'#8FA24E',5:'#4FA37F'};
 Typography: Fraunces 900 for headings and the pin numerals, Space Mono for
 small caps-y metadata (chips, buttons, labels), Work Sans for body text.
 
-Ratings are rendered as bicycle emoji via `bikes(grade)` — `4` becomes
-`🚲🚲🚲🚲/5` — in the card and the list. **Map pins keep the numeral**, because
-five bicycles do not fit in a 34px pin; the bicycle rating is in the pin's
-tooltip instead. Preserve that split.
+Ratings are plain numerals everywhere: the `.stamp` circle in the card (a
+rotated ring showing the grade over `AV 5`), the `.num` column in the list, and
+the numeral inside the map pin. Do not restyle the rating as emoji, stars or
+bars — this was tried with bicycle emoji and reverted.
 
 ## Code conventions
 
