@@ -118,17 +118,18 @@ h1{
 .c-media [hidden]{display:none}   /* måste stå sist för att slå reglerna ovan */
 .coaster-inner{
   border:1px solid rgba(17,20,15,.22);border-radius:9px;
-  padding:16px 16px 14px;display:flex;gap:14px;align-items:flex-start;
+  padding:16px 16px 14px;
 }
-.stamp{
-  flex:0 0 auto;width:64px;height:64px;border-radius:50%;
-  border:2px solid var(--c);color:var(--c);
-  display:grid;place-items:center;transform:rotate(-4deg);
+/* Betyget som cyklar, t.ex. 🚲🚲🚲🚲/5 */
+.score{
+  display:inline-flex;align-items:center;
+  border:2px solid var(--c);border-radius:999px;
+  padding:7px 13px;margin:0 0 13px;
 }
-.stamp b{font-family:Fraunces,serif;font-weight:900;font-size:28px;line-height:1}
-.stamp i{font-family:"Space Mono",monospace;font-style:normal;font-size:9px;
-  letter-spacing:.08em;margin-top:-2px}
-.c-body{min-width:0;flex:1}
+.score .bikes{font-size:15px;line-height:1.2;letter-spacing:1px;margin-right:-1px}
+.score .of{font-family:"Space Mono",monospace;font-size:12px;font-weight:700;
+  letter-spacing:.04em;color:rgba(17,20,15,.55)}
+.c-body{min-width:0}
 .c-body h2{font-family:Fraunces,serif;font-weight:900;font-size:21px;
   margin:0 0 3px;line-height:1.06;letter-spacing:-.01em}
 .addr{font-size:13px;color:rgba(17,20,15,.62);margin:0 0 11px;line-height:1.35}
@@ -161,8 +162,9 @@ h1{
   padding:13px 2px;border-bottom:1px solid var(--line);
 }
 .row:hover .nm{color:var(--brass)}
-.row .num{font-family:Fraunces,serif;font-weight:900;font-size:19px;
-  width:30px;flex:0 0 auto;color:var(--c)}
+.row .score-sm{width:88px;flex:0 0 auto;display:flex;align-items:baseline}
+.row .score-sm .bikes{font-size:11px;line-height:1.3;letter-spacing:.5px;margin-right:-.5px}
+.row .score-sm .of{font-family:"Space Mono",monospace;font-size:10px;font-weight:700;color:var(--c)}
 .nm{font-weight:600;font-size:15px;line-height:1.2;transition:color .15s}
 .ad{font-size:12px;color:rgba(226,218,198,.42);margin-top:2px}
 
@@ -202,10 +204,10 @@ h1{
       <div class="ph" id="sPh"><b>–</b><i>FOTO SAKNAS</i></div>
     </div>
     <div class="coaster-inner">
-      <div class="stamp"><div style="text-align:center"><b id="sGrade">–</b><br><i>AV 5</i></div></div>
       <div class="c-body">
         <h2 id="sName">–</h2>
         <p class="addr" id="sAddr"></p>
+        <div class="score" id="sScore"><span class="bikes" id="sGrade">–</span><span class="of">/5</span></div>
         <div class="c-actions">
           <a id="sDir" href="#" target="_blank" rel="noopener">Vägbeskrivning</a>
           <a href="https://www.instagram.com/malmosbarer" target="_blank" rel="noopener">Recensionen</a>
@@ -229,7 +231,8 @@ h1{
 <script>
 /* ============================================================
    BARERNA — lägg till nya rader här, en per bar.
-   Betyg 1–5. Senaste omdömet gäller om en bar recenserats flera gånger.
+   Betyg 1–5, visas som cyklar i kortet och listan (4 blir 🚲🚲🚲🚲/5).
+   Senaste omdömet gäller om en bar recenserats flera gånger.
 
    img: sökväg eller adress till ett foto på baren, t.ex.
         img:'bilder/bar-kiosko.jpg'  (fil bredvid index.html)
@@ -239,8 +242,10 @@ h1{
 const BARS = [
   {name:'Bar Kiosko',         grade:5, addr:'Nobelvägen 73B',       lat:55.5894929, lng:13.0153171, img:''},
   {name:'Gamle Nobes Bodega', grade:4, addr:'Kristianstadsgatan 36', lat:55.5912370, lng:13.0167607, img:''},
+  {name:'Tacopalatset',       grade:4, addr:'Amiralsgatan 47',      lat:55.5883000, lng:13.0238000, img:''},
   {name:'Rex',                grade:3, addr:'Nobelvägen 107',       lat:55.5936599, lng:13.0208990, img:''},
   {name:'Family Pub',         grade:3, addr:'Nobelvägen 52',        lat:55.5936210, lng:13.0203022, img:''},
+  {name:'Ava vinbar',         grade:3, addr:'Karlskronaplan 7',     lat:55.5879000, lng:13.0246000, img:''},
   {name:'Asia Village',       grade:2, addr:'Ystadsgatan 39',       lat:55.5893317, lng:13.0169568, img:''}
 ];
 
@@ -281,6 +286,9 @@ tryNextSource();
 
 function esc(s){ return String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
+/* Betyget som cykel-emoji: 4 -> 🚲🚲🚲🚲 */
+function bikes(grade){ return '🚲'.repeat(Math.max(0,Math.min(5,grade))); }
+
 function render(){
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -291,7 +299,7 @@ function render(){
       html:'<div class="pin" style="--c:'+COLORS[b.grade]+'">'+b.grade+'</div>',
       iconSize:[34,34], iconAnchor:[17,17]
     });
-    markers.push(L.marker([b.lat,b.lng],{icon,keyboard:true,title:b.name})
+    markers.push(L.marker([b.lat,b.lng],{icon,keyboard:true,title:b.name+' – '+bikes(b.grade)+'/5'})
       .addTo(map).on('click',()=>openSheet(i)));
   });
 }
@@ -300,7 +308,8 @@ function renderList(){
   const sorted = [...BARS].sort((a,b)=> b.grade-a.grade || a.name.localeCompare(b.name,'sv'));
   document.getElementById('viewList').innerHTML = sorted.map(b =>
     '<button class="row" data-go="'+BARS.indexOf(b)+'">'
-    + '<span class="num" style="--c:'+COLORS[b.grade]+'">'+b.grade+'</span>'
+    + '<span class="score-sm" style="--c:'+COLORS[b.grade]+'" aria-label="Betyg '+b.grade+' av 5">'
+    + '<span class="bikes">'+bikes(b.grade)+'</span><span class="of">/5</span></span>'
     + '<span><span class="nm">'+esc(b.name)+'</span><br>'
     + '<span class="ad">'+esc(b.addr||'')+'</span></span></button>').join('');
   document.querySelectorAll('[data-go]').forEach(btn => btn.onclick = ()=>{
@@ -343,8 +352,10 @@ function showPhoto(b){
 function openSheet(i){
   const b = BARS[i];
   showPhoto(b);
-  document.querySelector('.stamp').style.setProperty('--c',COLORS[b.grade]);
-  document.getElementById('sGrade').textContent = b.grade;
+  const score = document.getElementById('sScore');
+  score.style.setProperty('--c',COLORS[b.grade]);
+  score.setAttribute('aria-label','Betyg '+b.grade+' av 5');
+  document.getElementById('sGrade').textContent = bikes(b.grade);
   document.getElementById('sName').textContent = b.name;
   document.getElementById('sAddr').textContent = (b.addr ? b.addr+' · ' : '')+'Malmö';
   document.getElementById('sDir').href =
