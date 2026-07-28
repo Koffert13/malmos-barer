@@ -284,6 +284,31 @@ tryNextSource();
 
 function esc(s){ return String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
+/* Barer i samma kvarter kan ligga så tätt att nålarna täcker varandra, så
+   ett klick zoomar in innan kortet öppnas. Är kartan redan tillräckligt
+   nära räcker det att panorera dit, annars känns det ryckigt att klicka
+   sig mellan två grannar. */
+const NEAR_ZOOM = 17;
+
+/* Kortet täcker nederkanten, så vi siktar en bit under baren för att nålen
+   ska hamna mitt i den fria ytan ovanför kortet i stället för bakom det. */
+function centerFor(b,zoom){
+  const h = document.getElementById('sheet').offsetHeight;
+  const lift = Math.max(0, Math.min(h/2, map.getSize().y/2 - 40));
+  return map.unproject(map.project([b.lat,b.lng],zoom).add([0,lift]),zoom);
+}
+
+function goTo(i){
+  const b = BARS[i];
+  if(map.getZoom() >= NEAR_ZOOM){
+    map.panTo(centerFor(b,map.getZoom()));
+    openSheet(i);
+    return;
+  }
+  map.flyTo(centerFor(b,NEAR_ZOOM),NEAR_ZOOM,{duration:.7});
+  setTimeout(()=>openSheet(i),450);
+}
+
 function render(){
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -295,7 +320,7 @@ function render(){
       iconSize:[34,34], iconAnchor:[17,17]
     });
     markers.push(L.marker([b.lat,b.lng],{icon,keyboard:true,title:b.name+' – '+b.grade+'/5'})
-      .addTo(map).on('click',()=>openSheet(i)));
+      .addTo(map).on('click',()=>goTo(i)));
   });
 }
 
@@ -307,10 +332,8 @@ function renderList(){
     + '<span><span class="nm">'+esc(b.name)+'</span><br>'
     + '<span class="ad">'+esc(b.addr||'')+'</span></span></button>').join('');
   document.querySelectorAll('[data-go]').forEach(btn => btn.onclick = ()=>{
-    const i = +btn.dataset.go;
     closePanel();
-    map.flyTo([BARS[i].lat,BARS[i].lng],17,{duration:.7});
-    setTimeout(()=>openSheet(i),450);
+    goTo(+btn.dataset.go);
   });
   document.getElementById('pTitle').textContent = BARS.length + ' barer';
 }
